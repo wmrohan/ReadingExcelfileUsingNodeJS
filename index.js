@@ -4,15 +4,15 @@
  */
 
 const express = require("express");
-const path = require("path");
 const multer = require('multer');
+const Excel = require('exceljs');
 
-
+const fileDestination = './uploads';
 
 
 let storage = multer.diskStorage({
 	destination: function (req, file, cb) {
-	  cb(null, './uploads')
+	  cb(null, fileDestination)
 	},
 	filename: function (req, file, cb) {
       req.filename = Date.now() + '-' + file.originalname;
@@ -46,7 +46,25 @@ app.get("/", (req, res) => {
  */
 
 app.post("/upload", upload, (req, res)   => {
-  res.status(200).send("Successfully upload "+req.filename);
+
+  var resultLog = [];
+  console.log('File Uploading: ' + req.filename);
+  req.filePath = fileDestination + '/' +req.filename;	
+  var workbook = new Excel.Workbook();
+  workbook.xlsx.readFile(req.filePath)
+      .then(function () {       
+            var worksheet = workbook.getWorksheet(1);      
+            worksheet.eachRow({ includeEmpty: false },function (row, rowNumber) {
+              if (rowNumber != 1) {
+                var currRow = worksheet.getRow(rowNumber); 
+                console.log(rowNumber,"Name :" + currRow.getCell(1).value +", email :" +currRow.getCell(2).value);
+                resultLog.push({'ID' : rowNumber ,'Name' : currRow.getCell(1).value , 'email' : currRow.getCell(2).value});
+              }    
+            });
+        res.status(200).send(resultLog);     
+      }).catch(function (error) {
+        res.status(500).send({ code: 500 , message: error.message, error: error });
+      });
 });
 
 /**
